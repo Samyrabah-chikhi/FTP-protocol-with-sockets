@@ -2,6 +2,7 @@
  * echo - read and echo text lines until client closes connection
  */
 #include "csapp.h"
+#include "string.h"
 
 // question 1
 typedef enum{
@@ -26,7 +27,7 @@ typedef enum{
 
 typedef struct response_t{
 	result_t result;
-	char *body;
+	int length;
 }response_t;
 
 void file_transfer(int connfd,int pid, char* foldername, int folderlen)
@@ -66,11 +67,12 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
         
 	char buff[] = "Invalid command\n";
 	response.result = FAIL;
-        response.body = malloc(sizeof(buff));
-	strcpy(response.body,buff);
-        Rio_writen(connfd, response.body, sizeof(response.body));
+	response.length = strlen(buff);
 
-        }
+        Rio_writen(connfd, &response, sizeof(response));
+	Rio_writen(connfd, buff, response.length); 
+	return ;
+       }
     }
     
     int filelen = sizeof(filename)/sizeof(char);
@@ -84,8 +86,11 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
     file = fopen(path,"rb");
     if( file == NULL){
         char buff[] = "No file with such a name found\n";
-        n = sizeof(buff)/sizeof(char);
-        Rio_writen(connfd, buff, n);
+        response.result = FAIL;
+        response.length = strlen(buff);
+
+        Rio_writen(connfd, &response, sizeof(response));
+        Rio_writen(connfd, buff, response.length);
     }
     else{
 	// recherche de la taille du buffer pour lire le fichier
@@ -93,27 +98,22 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 		fseek(file, 0, SEEK_END);
 		n = ftell(file);
 		fseek(file, 0, SEEK_SET);
-		
-      		response.body = (char *)malloc(n+1);
+
 		char body[n];
-		if(!response.body){
-			char buff[] = "Allocation for string failed\n";
-       			n = sizeof(buff)/sizeof(char);
-        		Rio_writen(connfd, buff, n);
+		if(fread(body, 1, n, file) != 0){
+			printf("File content: %s\n",body);
+			response.result = SUCCESS;
+			response.length = strlen(body);
 		}
 		else{
-			if(fread(body, 1, n, file) != 0){
-				printf("File content: %s\n",response.body);
-				response.result = SUCCESS;
-			}
-			else{
-				response.result = FAIL;
-			}
-			Rio_writen(connfd, body, sizeof(body));
+			response.result = FAIL;
+			response.length = 0;
 		}
-		printf("seeked: %lu\n",n);   
+		Rio_writen(connfd, &response, sizeof(response));
+		Rio_writen(connfd, body, response.length);
+		printf("seeked: %lu\n",n); 
 		fclose(file);
-    	}
+	}
 	else if( req.type == PUT){
 		// later
 	}

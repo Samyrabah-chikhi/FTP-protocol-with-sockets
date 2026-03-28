@@ -6,6 +6,17 @@
 
 #define PORT 2121
 
+typedef enum{
+        SUCCESS = 0,
+        FAIL = 1
+}result_t;
+
+typedef struct response_t{
+        result_t result;
+        int length;
+}response_t;
+
+
 int main(int argc, char **argv)
 {
     int clientfd, n;
@@ -63,15 +74,26 @@ int main(int argc, char **argv)
     	char path[ filelen+folderlen ];
     	strcpy(path,foldername);
 	strcpy(path+folderlen-1,filename);
-	
-	printf("File for client: %s\n",path);
-	FILE* fptr = fopen(path, "wb");
 
-        while (( n = Rio_readlineb(&rio, buf, MAXLINE)) > 0) {
-            Fputs(buf, stdout);
-	    fwrite(buf, 1, n, fptr);
-        }
-	fclose(fptr);
+	response_t res;
+	Rio_readn(clientfd, &res, sizeof(res));
+	char body[ res.length ];
+
+	if( res.result == FAIL){
+		printf("Error transfering the file.\n");
+		Rio_readlineb(&rio, body, res.length);
+                printf("Server message: %s",body);
+	}
+	else{
+		printf("File for client: %s\n",path);
+        	FILE* fptr = fopen(path, "wb");
+		
+		while (( n = Rio_readlineb(&rio, body, res.length)) > 0) {
+                    	fwrite(body, 1, n, fptr);
+        	}
+        	fclose(fptr);
+		printf("Transfer succesfully complete.\n");
+	}
     }
     Close(clientfd);
     exit(0);
