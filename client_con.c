@@ -57,17 +57,20 @@ int main(int argc, char **argv)
      */ 
     getsockname(clientfd, ( SA * )&clientaddr, &clientlen);
     printf("Client connecté via port n°: %d\n\n",ntohs(clientaddr.sin_port));
-    
+
     Rio_readinitb(&rio, clientfd);
 
-    if(Fgets(buf, MAXLINE, stdin) != NULL) {
+    while(Fgets(buf, MAXLINE, stdin) != NULL) {
 
      	Rio_writen(clientfd, buf, strlen(buf));
-	char command[4];
+	char command[16];
       	char filename[256];
 
-    	sscanf(buf, "%4s %255s", command, filename);
-        
+    	sscanf(buf, "%16s %255s", command, filename);
+	if( strcasecmp(command,"BYE") == 0 ){
+		break;
+	}
+
 	int filelen = sizeof(filename)/sizeof(char);
     	int folderlen = sizeof(foldername)/sizeof(char);
 
@@ -77,23 +80,29 @@ int main(int argc, char **argv)
 
 	response_t res;
 	Rio_readn(clientfd, &res, sizeof(res));
+
 	char body[ res.length ];
+	int left = res.length;
+
 
 	if( res.result == FAIL){
 		printf("Error transfering the file.\n");
-		Rio_readlineb(&rio, body, res.length);
-                printf("Server message: %s",body);
+		Rio_readn(clientfd, body, res.length);
+                printf("Server: %s",body);
 	}
 	else{
 		printf("File for client: %s\n",path);
         	FILE* fptr = fopen(path, "wb");
-		
-		while (( n = Rio_readlineb(&rio, body, res.length)) > 0) {
-                    	fwrite(body, 1, n, fptr);
+
+		while (left > 0) {
+			n = Rio_readlineb(&rio, body, res.length);
+       			fwrite(body, 1, n, fptr);
+			left = left - n;
         	}
         	fclose(fptr);
 		printf("Transfer succesfully complete.\n");
 	}
+	printf("\n");
     }
     Close(clientfd);
     exit(0);

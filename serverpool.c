@@ -85,7 +85,8 @@ int main(int argc, char **argv)
                		client_ip_string);
 	
         	file_transfer(connfd, pid, foldername, folderlen);
-        	Close(connfd);
+		 // keeps on readin requests till "bye" received
+		Close(connfd);
 
 		printf("server %d disconnected to %s (%s)\n",pid, client_hostname,
                 	client_ip_string);
