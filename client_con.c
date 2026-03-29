@@ -5,17 +5,33 @@
 #include "errno.h"
 
 #define PORT 2121
+#define MAX_LEN 256
 
 typedef enum{
         SUCCESS = 0,
         FAIL = 1
 }result_t;
 
+typedef enum{
+        GET = 0,
+        PUT = 1,
+        BYE = 2,
+        LS = 3
+}typereq_t;
+
 typedef struct response_t{
         result_t result;
-        int length;
+        long long length;
 }response_t;
 
+typedef struct request_t{
+        typereq_t type;
+        char filename[MAX_LEN];
+	int filelen;
+        long long offset;
+}request_t;
+
+#define BLOCK_SIZE 512
 
 int main(int argc, char **argv)
 {
@@ -42,65 +58,100 @@ int main(int argc, char **argv)
     else{
 	printf("Erreur creating the folder %s for client\n",foldername);
     }
-    /*
-     * Note that the 'host' can be a name or an IP address.
-     * If necessary, Open_clientfd will perform the name resolution
-     * to obtain the IP address.
-     */
+
     clientfd = Open_clientfd(host, PORT);
     getpeername(clientfd, ( SA * )&clientaddr, &clientlen);
-    printf("numero de port du serveur: %d\n",ntohs(clientaddr.sin_port));
-    /*
-     * At this stage, the connection is established between the client
-     * and the server OS ... but it is possible that the server application
-     * has not yet called "Accept" for this connection	
-     */ 
+    printf("Server %s port %d\n",host,ntohs(clientaddr.sin_port));
+
     getsockname(clientfd, ( SA * )&clientaddr, &clientlen);
-    printf("Client connecté via port n°: %d\n\n",ntohs(clientaddr.sin_port));
+    printf("Client port: %d\n\n",ntohs(clientaddr.sin_port));
 
     Rio_readinitb(&rio, clientfd);
+    request_t req;
 
     while(Fgets(buf, MAXLINE, stdin) != NULL) {
 
-     	Rio_writen(clientfd, buf, strlen(buf));
-	char command[16];
-      	char filename[256];
-
-    	sscanf(buf, "%16s %255s", command, filename);
-	if( strcasecmp(command,"BYE") == 0 ){
+	if(strlen(buf) == 0 ){
+		printf("Typed blank\n");
 		break;
 	}
 
-	int filelen = sizeof(filename)/sizeof(char);
-    	int folderlen = sizeof(foldername)/sizeof(char);
+	char command[16];
+        char filename[256];
 
-    	char path[ filelen+folderlen ];
-    	strcpy(path,foldername);
-	strcpy(path+folderlen-1,filename);
+	if (sscanf(buf, "%16s %255s", command, filename) >= 1) {
+
+        if (strcasecmp(command, "GET") == 0) {
+                req.type = GET;
+        }
+        else if (strcasecmp(command, "PUT") == 0) {
+                req.type = PUT;
+        }
+        else if(strcasecmp(command, "LS") == 0){
+                req.type = LS;
+        }
+        else if(strcasecmp(command, "BYE") == 0){
+                req.type = BYE;
+        }
+	else{ 	// command not recognized
+		req.type = -1;
+	  }
+	}
+
+
+        int filelen = strlen(filename);
+        int folderlen = strlen(foldername);
+
+        char path[ filelen+folderlen ];
+        strcpy(path,foldername);
+        strcpy(path+folderlen,filename);
+
+	FILE* fptr = fopen(path, "rb");
+	if( fptr == NULL){
+		req.offset = 0;
+	}
+	else{
+		fseek(fptr,0,SEEK_END);
+		req.offset = ftell(fptr);
+		fseek(fptr,0,SEEK_SET);
+		fclose(fptr);
+	}
+	
+	req.filelen = filelen;
+	strcpy(req.filename,filename);
+
+     	Rio_writen(clientfd, &req, sizeof(req));
+
+	if( req.type == BYE ){
+                break;
+	}
+
+	printf("-File name: %s\n-File length: %d \n-File offset: %llu \n-Type number: %d\n",req.filename,req.filelen,req.offset,req.type);
 
 	response_t res;
 	Rio_readn(clientfd, &res, sizeof(res));
 
-	char body[ res.length ];
-	int left = res.length;
-
+	char body[BLOCK_SIZE];
+	long long left = res.length;
 
 	if( res.result == FAIL){
 		printf("Error transfering the file.\n");
 		Rio_readn(clientfd, body, res.length);
-                printf("Server: %s",body);
+                printf("Server: %s\n",body);
 	}
 	else{
-		printf("File for client: %s\n",path);
-        	FILE* fptr = fopen(path, "wb");
+		if( req.type == GET ) {
+			fptr = fopen(path,"ab");
+			while (left > 0) {
+				int chunk = ( left > BLOCK_SIZE ) ? BLOCK_SIZE : left;
+				n = Rio_readn(clientfd, body, chunk);
+       				fwrite(body, 1, n, fptr);
+				left = left - n;
 
-		while (left > 0) {
-			n = Rio_readlineb(&rio, body, res.length);
-       			fwrite(body, 1, n, fptr);
-			left = left - n;
-        	}
-        	fclose(fptr);
-		printf("Transfer succesfully complete.\n");
+        		}
+        		fclose(fptr);
+			printf("Transfer succesfully complete.\n");
+		}
 	}
 	printf("\n");
     }

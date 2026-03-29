@@ -48,6 +48,8 @@ int main(int argc, char **argv)
     char foldername[] = "server/";
     int folderlen = sizeof(foldername)/sizeof(char);
 
+    printf("----------Server started----------\n");
+
     int result = mkdir(foldername, 0777);
     if( result == 0 ) {
         printf("Folder %s created succesfully\n",foldername);
@@ -56,21 +58,23 @@ int main(int argc, char **argv)
         printf("Folder %s exists already\n",foldername);
     }
     else{
-        printf("Erreur creating the folder %s for server\n",foldername);
+        printf("Error creating folder %s for server\n",foldername);
     }
+    printf("\n");
 
     clientlen = (socklen_t)sizeof(clientaddr);
 
     listenfd = Open_listenfd(PORT);
     signal(SIGCHLD, handler_zombie);
     signal(SIGINT, handler_kill);
+    signal(SIGPIPE, SIG_IGN); // to not crash the server when client disconnects
     
     int i;
     for(i=0; i < NPROC ; i++){
     	pid_t pid = fork();
 	if( pid == 0){
     		while (1) {
-        
+		printf("\n");
         	connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
 		pid = getpid();
         	/* determine the name of the client */
