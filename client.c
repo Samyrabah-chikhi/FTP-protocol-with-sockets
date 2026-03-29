@@ -146,8 +146,12 @@ int main(int argc, char **argv)
 	printf("-File name: %s\n-File length: %d \n-File offset: %llu \n-Type number: %d\n",req.filename,req.filelen,req.offset,req.type);
 
 	response_t res;
-	Rio_readn(clientfd, &res, sizeof(res));
-
+	if( req.type == GET){
+		Rio_readn(clientfd, &res, sizeof(res));
+	}
+	else if( req.type == PUT){
+		//send server the file size
+	}
 	char body[BLOCK_SIZE];
 	long long left = res.length;
 
@@ -178,6 +182,9 @@ int main(int argc, char **argv)
                         }
                         fclose(fptr);
                 }
+		else if(req.type == PUT){
+			printf("PUT\n");
+		}
 		printf("Transfer succesfully complete.\n");
 	}
 	printf("\nEnter new command: ");
