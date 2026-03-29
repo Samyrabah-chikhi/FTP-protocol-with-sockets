@@ -1,19 +1,14 @@
-/*
- * echoserveri.c - An iterative echo server
- */
-
 #include "csapp.h"
 #include "errno.h"
 
 #define MAX_NAME_LEN 256
 #define NPROC 2
-#define PORT 2121
 
 // question 1
 typedef enum{
 	GET = 0,
 	PUT = 1,
-	LS = 2	
+	LS = 2
 }typereq_t;
 
 // question 2
@@ -21,6 +16,12 @@ typedef struct request_t{
 	typereq_t type;
 	char *filename;
 }request_t;
+
+typedef struct{
+	char ip[256];
+	int port;
+	int fd;
+}slave_info_t;
 
 void file_transfer(int connfd, int pid, char* foldername, int folderlen);
 
@@ -47,29 +48,29 @@ int main(int argc, char **argv)
 
     char foldername[] = "server/";
     int folderlen = sizeof(foldername)/sizeof(char);
+    int port, i;
 
-    printf("----------Server started----------\n");
+    if (argc < 2) {
+        fprintf(stderr, "usage: %s <port>\n", argv[0]);
+        exit(0);
+    }
+    port = atoi(argv[1]);
 
-    int result = mkdir(foldername, 0777);
-    if( result == 0 ) {
-        printf("Folder %s created succesfully\n",foldername);
-    }
-    else if( errno == EEXIST ){
-        printf("Folder %s exists already\n",foldername);
-    }
-    else{
-        printf("Error creating folder %s for server\n",foldername);
-    }
-    printf("\n");
+    int pid = getpid();
+    printf("----------Slave server %d started----------\n",pid);
 
     clientlen = (socklen_t)sizeof(clientaddr);
 
-    listenfd = Open_listenfd(PORT);
+    listenfd = Open_listenfd(port);
     signal(SIGCHLD, handler_zombie);
     signal(SIGINT, handler_kill);
     signal(SIGPIPE, SIG_IGN); // to not crash the server when client disconnects
-    
-    int i;
+
+    // connection to server
+    connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+    Close(connfd);
+    printf("Server information sent to MASTER\n");
+
     for(i=0; i < NPROC ; i++){
     	pid_t pid = fork();
 	if( pid == 0){
@@ -77,19 +78,18 @@ int main(int argc, char **argv)
 		printf("\n");
         	connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
 		pid = getpid();
-        	/* determine the name of the client */
+
         	Getnameinfo((SA *) &clientaddr, clientlen,
                 	    client_hostname, MAX_NAME_LEN, 0, 0, 0);
-        
-        	/* determine the textual representation of the client's IP address */
+
         	Inet_ntop(AF_INET, &clientaddr.sin_addr, client_ip_string,
                 	  INET_ADDRSTRLEN);
-        
+
         	printf("server %d connected to %s (%s)\n",pid, client_hostname,
                		client_ip_string);
-	
+
         	file_transfer(connfd, pid, foldername, folderlen);
-		 // keeps on readin requests till "bye" received
+
 		Close(connfd);
 
 		printf("server %d disconnected to %s (%s)\n",pid, client_hostname,

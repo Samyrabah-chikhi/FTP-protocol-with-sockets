@@ -52,7 +52,18 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 	n = Rio_readn(connfd, &req, sizeof(req));
 	printf("\nserver %d received %u bytes\n",pid, (unsigned int)n);
 
-   	if ( req.type == GET || req.type == PUT ||req.type == LS ){
+	char path[ req.filelen +folderlen ];
+        strcpy(path,foldername);
+        strcpy(path+folderlen-1,req.filename);
+
+   	if ( req.type == GET ){
+		printf("Client: GET %s at offset %llu\n",path,req.offset);
+	}
+	else if( req.type == PUT ) {
+		printf("Client: PUT %s\n",path);
+	}
+	else if (req.type == LS ){
+		printf("Client: LS %s\n",path);
 	}
 	else if ( req.type == BYE ){
 		printf("Client: BYE\n");
@@ -67,25 +78,24 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 		Rio_writen(connfd, buff, response.length); 
     	}
 
-    	char path[ req.filelen +folderlen ];
-   	strcpy(path,foldername);
-    	strcpy(path+folderlen-1,req.filename);
-
     	fptr = fopen(path,"rb");
 
-   	if( fptr == NULL){
+   	if( fptr == NULL && ( req.type == GET || req.type || PUT ) ){
+
+		printf("Error: No such file name found\n");
+
         	char buff[] = "No file with such a name found\n";
         	response.result = FAIL;
         	response.length = strlen(buff);
 
         	Rio_writen(connfd, &response, sizeof(response));
         	Rio_writen(connfd, buff, response.length);
+
     	}
     	else{
 		fseek(fptr, req.offset, SEEK_SET);
 		// recherche de la taille du buffer pour lire le fichier
 		if( req.type == GET ){
-			printf("Client: GET %s at offset %llu\n",path,req.offset);
 			fseek(fptr, 0, SEEK_END);
 			int n = ftell(fptr) - req.offset;
 			fseek(fptr, req.offset, SEEK_SET);
@@ -109,9 +119,10 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 		}
 		else if( req.type == LS){
 			//later
-		}
-		printf("Succesfully handled client request\n");
-     	}
+	     	}
+	}
+	printf("Succesfully handled client request\n");
+
     }
 	return ;
 }

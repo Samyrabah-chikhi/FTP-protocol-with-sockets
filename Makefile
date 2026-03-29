@@ -19,7 +19,7 @@ INCLUDE = csapp.h
 OBJS = csapp.o file_transfer.o
 INCLDIR = -I.
 
-PROGS = serverpool client_con 
+PROGS = masterserver slavepool client_con 
 
 
 all: $(PROGS)

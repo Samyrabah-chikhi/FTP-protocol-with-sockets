@@ -31,13 +31,17 @@ typedef struct request_t{
         long long offset;
 }request_t;
 
+typedef struct server_info_t{
+        char ip[256];
+        int port;
+}server_info_t;
+
 #define BLOCK_SIZE 512
 
 int main(int argc, char **argv)
 {
     int clientfd, n;
     char *host, buf[MAXLINE];
-    rio_t rio;
     struct sockaddr_in clientaddr;
     socklen_t clientlen = (socklen_t)sizeof(clientaddr);
     char foldername[] = "client/";
@@ -60,16 +64,28 @@ int main(int argc, char **argv)
     }
 
     clientfd = Open_clientfd(host, PORT);
+
     getpeername(clientfd, ( SA * )&clientaddr, &clientlen);
-    printf("Server %s port %d\n",host,ntohs(clientaddr.sin_port));
+    printf("Connected to MASTER Server %s port %d\n",host,ntohs(clientaddr.sin_port));
 
     getsockname(clientfd, ( SA * )&clientaddr, &clientlen);
-    printf("Client port: %d\n\n",ntohs(clientaddr.sin_port));
+    printf("From Client port: %d\n\n",ntohs(clientaddr.sin_port));
 
-    Rio_readinitb(&rio, clientfd);
+    server_info_t slave;
+    Rio_readn(clientfd, &slave, sizeof(slave));
+    Close(clientfd);
+
+    clientfd = Open_clientfd(slave.ip, slave.port);
+
+    getpeername(clientfd, ( SA * )&clientaddr, &clientlen);
+    printf("Connected to SLAVE Server %s port %d\n",host,ntohs(clientaddr.sin_port));
+
+    getsockname(clientfd, ( SA * )&clientaddr, &clientlen);
+    printf("From Client port: %d\n\n",ntohs(clientaddr.sin_port));
+
+    printf("Enter new command: ");
     request_t req;
-
-    while(Fgets(buf, MAXLINE, stdin) != NULL) {
+    while( Fgets(buf, MAXLINE, stdin) != NULL) {
 
 	if(strlen(buf) == 0 ){
 		printf("Typed blank\n");
@@ -116,7 +132,7 @@ int main(int argc, char **argv)
 		fseek(fptr,0,SEEK_SET);
 		fclose(fptr);
 	}
-	
+
 	req.filelen = filelen;
 	strcpy(req.filename,filename);
 
@@ -137,6 +153,7 @@ int main(int argc, char **argv)
 	if( res.result == FAIL){
 		printf("Error transfering the file.\n");
 		Rio_readn(clientfd, body, res.length);
+		body[res.length] = '\0';
                 printf("Server: %s\n",body);
 	}
 	else{
@@ -153,7 +170,7 @@ int main(int argc, char **argv)
 			printf("Transfer succesfully complete.\n");
 		}
 	}
-	printf("\n");
+	printf("\nEnter new command: ");
     }
     Close(clientfd);
     exit(0);
