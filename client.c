@@ -16,7 +16,8 @@ typedef enum{
         GET = 0,
         PUT = 1,
         BYE = 2,
-        LS = 3
+        LS = 3,
+	RM = 4
 }typereq_t;
 
 typedef struct response_t{
@@ -44,7 +45,7 @@ int main(int argc, char **argv)
     char *host, buf[MAXLINE];
     struct sockaddr_in clientaddr;
     socklen_t clientlen = (socklen_t)sizeof(clientaddr);
-    char foldername[] = "client/";
+    char foldername[] = "client_path/";
 
     if (argc < 2) {
         fprintf(stderr, "usage: %s <host>\n", argv[0]);
@@ -164,11 +165,20 @@ int main(int argc, char **argv)
 				n = Rio_readn(clientfd, body, chunk);
        				fwrite(body, 1, n, fptr);
 				left = left - n;
-
         		}
         		fclose(fptr);
-			printf("Transfer succesfully complete.\n");
 		}
+		else if( req.type == LS ) {
+			fptr = fopen("client_path/ls","wb");
+                        while (left > 0) {
+                                int chunk = ( left > BLOCK_SIZE ) ? BLOCK_SIZE : left;
+                                n = Rio_readn(clientfd, body, chunk);
+                                fwrite(body, 1, n, fptr);
+                                left = left - n;
+                        }
+                        fclose(fptr);
+                }
+		printf("Transfer succesfully complete.\n");
 	}
 	printf("\nEnter new command: ");
     }

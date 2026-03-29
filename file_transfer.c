@@ -11,7 +11,8 @@ typedef enum{
         GET = 0,
         PUT = 1,
 	BYE = 2,
-        LS = 3
+        LS = 3,
+        RM = 4
 }typereq_t;
 
 // question 2
@@ -56,6 +57,7 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
         strcpy(path,foldername);
         strcpy(path+folderlen-1,req.filename);
 
+	// for debugging purposes
    	if ( req.type == GET ){
 		printf("Client: GET %s at offset %llu\n",path,req.offset);
 	}
@@ -63,8 +65,11 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 		printf("Client: PUT %s\n",path);
 	}
 	else if (req.type == LS ){
-		printf("Client: LS %s\n",path);
+		printf("Client: LS %s\n",req.filename);
 	}
+	else if (req.type == RM ){
+                printf("Client: RM %s\n",path);
+        }
 	else if ( req.type == BYE ){
 		printf("Client: BYE\n");
         	break;
@@ -78,24 +83,23 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 		Rio_writen(connfd, buff, response.length); 
     	}
 
-    	fptr = fopen(path,"rb");
 
-   	if( fptr == NULL && ( req.type == GET || req.type || PUT ) ){
+   	if( req.type == GET ){
+		fptr = fopen(path,"rb");
+		if( fptr == NULL ){
+			printf("Error: No such file name found\n");
 
-		printf("Error: No such file name found\n");
+        		char buff[] = "No file with such a name found\n";
+        		response.result = FAIL;
+        		response.length = strlen(buff);
 
-        	char buff[] = "No file with such a name found\n";
-        	response.result = FAIL;
-        	response.length = strlen(buff);
+        		Rio_writen(connfd, &response, sizeof(response));
+        		Rio_writen(connfd, buff, response.length);
+		}
+		else{
+			fseek(fptr, req.offset, SEEK_SET);
+			// recherche de la taille du buffer pour lire le fichier
 
-        	Rio_writen(connfd, &response, sizeof(response));
-        	Rio_writen(connfd, buff, response.length);
-
-    	}
-    	else{
-		fseek(fptr, req.offset, SEEK_SET);
-		// recherche de la taille du buffer pour lire le fichier
-		if( req.type == GET ){
 			fseek(fptr, 0, SEEK_END);
 			int n = ftell(fptr) - req.offset;
 			fseek(fptr, req.offset, SEEK_SET);
@@ -112,14 +116,60 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 					break;
 				}
 			}
+			free(body);
 			fclose(fptr);
 		}
-		else if( req.type == PUT){
-			// later
+	}
+	else if( req.type == LS){
+		char command[req.filelen+4];
+		strcpy(command,"ls ");
+		strcpy(command+3,req.filename);
+
+		FILE *fp = popen(command, "r");
+    		if (!fp) {
+        		response.result = FAIL;
+        		response.length = 0;
+        		Rio_writen(connfd, &response, sizeof(response));
+        		return;
 		}
-		else if( req.type == LS){
-			//later
-	     	}
+
+    		char buffer[BLOCK_SIZE];
+    		int total = 0;
+
+    		char *output = malloc(1);
+    		output[0] = '\0';
+
+    		while (fgets(buffer, sizeof(buffer), fp)) {
+        		int len = strlen(buffer);
+        		output = realloc(output, total + len + 1);
+        		memcpy(output + total, buffer, len);
+        		total += len;
+        		output[total] = '\0';
+    		}
+    		pclose(fp);
+
+    		response.result = SUCCESS;
+    		response.length = total;
+
+    		Rio_writen(connfd, &response, sizeof(response));
+
+		int chunk, offset = 0;
+    		char *body = malloc( sizeof(char) *(BLOCK_SIZE + 1));
+                while( total > 0){
+			chunk = ( total > BLOCK_SIZE) ? BLOCK_SIZE : total;
+			memcpy(body,output+offset,chunk);
+                        if( rio_writen(connfd, body, chunk) < 0 ){
+                                printf("Client disconnected while sending data\n");
+                                break;
+                        }
+			offset += chunk;
+			total -= chunk;
+                }
+		free(body);
+    		free(output);
+	}
+	else if( req.type == RM){
+		//later
 	}
 	printf("Succesfully handled client request\n");
 

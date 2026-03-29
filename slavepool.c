@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     char client_ip_string[INET_ADDRSTRLEN];
     char client_hostname[MAX_NAME_LEN];
 
-    char foldername[] = "server/";
+    char foldername[] = "server_path/";
     int folderlen = sizeof(foldername)/sizeof(char);
     int port, i;
 

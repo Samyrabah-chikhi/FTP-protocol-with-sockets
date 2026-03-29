@@ -3,7 +3,7 @@
 
 #define MAX_NAME_LEN 256
 #define PORT 2121
-#define NB_SLAVES 2
+#define NB_SLAVES 1
 #define PORT_SLAVE 5000
 
 typedef struct server_info_t{
@@ -16,6 +16,29 @@ typedef struct{
         int fd;
 }slave_info_t;
 
+char* get_ip() {
+    char hostbuffer[256];
+    struct hostent *host_entry;
+    int hostname;
+    struct in_addr **addr_list;
+
+    // retrieve hostname
+    hostname = gethostname(hostbuffer, sizeof(hostbuffer));
+    if (hostname == -1) {
+        perror("gethostname error");
+        exit(1);
+    }
+    printf("Hostname: %s\n", hostbuffer);
+
+    // Retrieve IP addresses
+    host_entry = gethostbyname(hostbuffer);
+    if (host_entry == NULL) {
+        perror("gethostbyname error");
+        exit(1);
+    }
+    addr_list = (struct in_addr **)host_entry->h_addr_list;
+    return inet_ntoa(*addr_list[0]);
+}
 
 int main(int argc, char **argv)
 {
@@ -25,7 +48,7 @@ int main(int argc, char **argv)
     char client_ip_string[INET_ADDRSTRLEN];
     char client_hostname[MAX_NAME_LEN];
 
-    char foldername[] = "server/";
+    char foldername[] = "server_path/";
     int i, chosen = 0;
 
     slave_info_t slaves[NB_SLAVES];
@@ -46,10 +69,11 @@ int main(int argc, char **argv)
     printf("\n");
 
     printf("Connecting to slave servers\n");
+    char *server_ip = get_ip();
     for( i=0; i < NB_SLAVES; i++){
 
         slaves[i].info.port = PORT_SLAVE + i;
-        strcpy(slaves[i].info.ip,"localhost");
+        strcpy(slaves[i].info.ip,server_ip);
         printf("Slaves[%d]: %s port %d\n",i+1,slaves[i].info.ip,slaves[i].info.port);
 
         slaves[i].fd = Open_clientfd(slaves[i].info.ip,slaves[i].info.port);
