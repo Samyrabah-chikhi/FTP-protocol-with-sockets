@@ -41,17 +41,19 @@ typedef struct response_t{
 void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 {
     size_t n;
-    rio_t rio;
     FILE* fptr;
-    Rio_readinitb(&rio, connfd);
-
 
     while(1){
 	request_t req;
 	response_t response;
 
-	n = Rio_readn(connfd, &req, sizeof(req));
+	n = rio_readn(connfd, &req, sizeof(req));
 	printf("\nserver %d received %u bytes\n",pid, (unsigned int)n);
+
+	if( n <= 0 ){
+                printf("Client disconnected while sending data\n");
+        	break;
+        }
 
 	char path[ req.filelen +folderlen ];
         strcpy(path,foldername);
@@ -61,26 +63,29 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
    	if ( req.type == GET ){
 		printf("Client: GET %s at offset %llu\n",path,req.offset);
 	}
-	else if( req.type == PUT ) {
-		printf("Client: PUT %s\n",path);
-	}
 	else if (req.type == LS ){
 		printf("Client: LS %s\n",req.filename);
 	}
-	else if (req.type == RM ){
-                printf("Client: RM %s\n",path);
-        }
 	else if ( req.type == BYE ){
 		printf("Client: BYE\n");
         	break;
 	}
     	else {
+		printf("Client: Invalid command\n");
 		char buff[] = "Invalid command\n";
 		response.result = FAIL;
 		response.length = strlen(buff);
 
-        	Rio_writen(connfd, &response, sizeof(response));
-		Rio_writen(connfd, buff, response.length); 
+        	n = rio_writen(connfd, &response, sizeof(response));
+		if( n <= 0 ){
+                	printf("Client disconnected while sending data\n");
+                	break;
+        	}
+		n = rio_writen(connfd, buff, response.length);
+		if( n <= 0 ){
+                	printf("Client disconnected while sending data\n");
+                	break;
+       	 	} 
     	}
 
 
@@ -93,8 +98,16 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
         		response.result = FAIL;
         		response.length = strlen(buff);
 
-        		Rio_writen(connfd, &response, sizeof(response));
-        		Rio_writen(connfd, buff, response.length);
+        		n = rio_writen(connfd, &response, sizeof(response));
+			if(n <= 0 ){
+                		printf("Client disconnected while sending data\n");
+                		break;
+        		}
+        		n = rio_writen(connfd, buff, response.length);
+			if(n <= 0 ){
+          			printf("Client disconnected while sending data\n");
+                		break;
+        		}
 		}
 		else{
 			fseek(fptr, req.offset, SEEK_SET);
@@ -106,7 +119,11 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 
 			response.result = SUCCESS;
                 	response.length = n;
-			Rio_writen(connfd, &response, sizeof(response));
+			n = rio_writen(connfd, &response, sizeof(response));
+			if( n <= 0 ){
+                		printf("Client disconnected while sending data\n");
+                		break;
+        		}
 
 			char *body = malloc( sizeof(char) *(BLOCK_SIZE + 1));
 			while(( n = fread(body, 1, BLOCK_SIZE, fptr) ) != 0){
@@ -119,6 +136,7 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 			free(body);
 			fclose(fptr);
 		}
+		printf("Succesfully handled client request\n");
 	}
 	else if( req.type == LS){
 		char command[req.filelen+4];
@@ -129,7 +147,11 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
     		if (!fp) {
         		response.result = FAIL;
         		response.length = 0;
-        		Rio_writen(connfd, &response, sizeof(response));
+        		n = rio_writen(connfd, &response, sizeof(response));
+			if( n <= 0 ){
+                		printf("Client disconnected while sending data\n");
+                		break;
+        		}
         		return;
 		}
 
@@ -151,7 +173,11 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
     		response.result = SUCCESS;
     		response.length = total;
 
-    		Rio_writen(connfd, &response, sizeof(response));
+    		n = rio_writen(connfd, &response, sizeof(response));
+		if( n <= 0 ){
+                	printf("Client disconnected while sending data\n");
+                	break;
+        	}
 
 		int chunk, offset = 0;
     		char *body = malloc( sizeof(char) *(BLOCK_SIZE + 1));
@@ -167,12 +193,11 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
                 }
 		free(body);
     		free(output);
+		printf("Succesfully handled client request\n");
 	}
-	else if( req.type == RM){
-		//later
+	else if( req.type == PUT || req.type == RM ){
+		printf("Not handled by server yet!\n");
 	}
-	printf("Succesfully handled client request\n");
-
     }
 	return ;
 }

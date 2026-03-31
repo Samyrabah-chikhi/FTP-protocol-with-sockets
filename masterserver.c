@@ -93,9 +93,6 @@ int main(int argc, char **argv)
                 Inet_ntop(AF_INET, &clientaddr.sin_addr, client_ip_string,
                           INET_ADDRSTRLEN);
 
-                printf("MASTER Server %d connected to %s (%s)\n",pid, client_hostname,
-                        client_ip_string);
-
 		if( chosen == NB_SLAVES)
 			chosen = 0;
 
@@ -105,11 +102,10 @@ int main(int argc, char **argv)
 		Rio_writen(connfd, &chosenServer, sizeof(chosenServer));
 
                 Close(connfd);
-		chosen++;
 
-                printf("MASTER Server %d sent server infos and disconnected to %s (%s)\n",pid, client_hostname,
+                printf("MASTER Server %d sent Slave %d to Cient %s (%s)\n",pid,chosen, client_hostname,
                         client_ip_string);
-
+		chosen++;
 	}
 
     exit(0);

@@ -1,0 +1,15 @@
+client
+client.c
+client_path
+csapp.c
+csapp.h
+csapp.o
+file_transfer.c
+file_transfer.o
+Makefile
+masterserver
+masterserver.c
+server_path
+slavepool
+slavepool.c
+structures.h

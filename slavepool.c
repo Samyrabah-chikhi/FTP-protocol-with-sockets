@@ -85,14 +85,14 @@ int main(int argc, char **argv)
         	Inet_ntop(AF_INET, &clientaddr.sin_addr, client_ip_string,
                 	  INET_ADDRSTRLEN);
 
-        	printf("server %d connected to %s (%s)\n",pid, client_hostname,
+        	printf("Server %d connected to %s (%s)\n",pid, client_hostname,
                		client_ip_string);
 
         	file_transfer(connfd, pid, foldername, folderlen);
 
 		Close(connfd);
 
-		printf("server %d disconnected to %s (%s)\n",pid, client_hostname,
+		printf("Server %d disconnected to %s (%s)\n",pid, client_hostname,
                 	client_ip_string);
 		}
 	}

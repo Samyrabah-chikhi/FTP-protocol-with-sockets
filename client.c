@@ -79,7 +79,7 @@ int main(int argc, char **argv)
     clientfd = Open_clientfd(slave.ip, slave.port);
 
     getpeername(clientfd, ( SA * )&clientaddr, &clientlen);
-    printf("Connected to SLAVE Server %s port %d\n",host,ntohs(clientaddr.sin_port));
+    printf("Connected to SLAVE Server %s port %d ",host,ntohs(clientaddr.sin_port));
 
     getsockname(clientfd, ( SA * )&clientaddr, &clientlen);
     printf("From Client port: %d\n\n",ntohs(clientaddr.sin_port));
@@ -143,20 +143,19 @@ int main(int argc, char **argv)
                 break;
 	}
 
-	printf("-File name: %s\n-File length: %d \n-File offset: %llu \n-Type number: %d\n",req.filename,req.filelen,req.offset,req.type);
+	printf("Request_format{\nFile name: %s,\n-File offset: %llu,\n-Type number: %d,\n}\n",req.filename,req.offset,req.type);
 
 	response_t res;
-	if( req.type == GET){
+	if( req.type == GET || req.type == LS ||  req.type == -1 ){
 		Rio_readn(clientfd, &res, sizeof(res));
 	}
-	else if( req.type == PUT){
+	else if( req.type == PUT || req.type == RM){
 		//send server the file size
 	}
 	char body[BLOCK_SIZE];
 	long long left = res.length;
 
 	if( res.result == FAIL){
-		printf("Error transfering the file.\n");
 		Rio_readn(clientfd, body, res.length);
 		body[res.length] = '\0';
                 printf("Server: %s\n",body);
@@ -171,6 +170,7 @@ int main(int argc, char **argv)
 				left = left - n;
         		}
         		fclose(fptr);
+			printf("Transfer succesfully complete.\n");
 		}
 		else if( req.type == LS ) {
 			fptr = fopen("client_path/ls","wb");
@@ -181,11 +181,11 @@ int main(int argc, char **argv)
                                 left = left - n;
                         }
                         fclose(fptr);
+			printf("Transfer succesfully complete.\n");
                 }
-		else if(req.type == PUT){
-			printf("PUT\n");
+		else{
+			printf("Not implemented by server yet\n");
 		}
-		printf("Transfer succesfully complete.\n");
 	}
 	printf("\nEnter new command: ");
     }
