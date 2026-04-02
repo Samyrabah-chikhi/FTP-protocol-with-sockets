@@ -164,6 +164,9 @@ int main(int argc, char **argv)
 		if( req.type == GET ) {
 			fptr = fopen(path,"ab");
 			while (left > 0) {
+				// simulate crash
+				//if( left <= 500000000 ){ break; }
+				// 536 870 912
 				int chunk = ( left > BLOCK_SIZE ) ? BLOCK_SIZE : left;
 				n = Rio_readn(clientfd, body, chunk);
        				fwrite(body, 1, n, fptr);

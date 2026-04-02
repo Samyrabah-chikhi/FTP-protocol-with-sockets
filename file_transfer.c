@@ -42,7 +42,7 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
 {
     size_t n;
     FILE* fptr;
-
+	// to do crash client !
     while(1){
 	request_t req;
 	response_t response;
@@ -124,7 +124,7 @@ void file_transfer(int connfd,int pid, char* foldername, int folderlen)
                 		printf("Client disconnected while sending data\n");
                 		break;
         		}
-
+			
 			char *body = malloc( sizeof(char) *(BLOCK_SIZE + 1));
 			while(( n = fread(body, 1, BLOCK_SIZE, fptr) ) != 0){
 				body[n]='\0';
