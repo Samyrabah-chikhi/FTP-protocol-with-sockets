@@ -2,7 +2,7 @@
 #include "errno.h"
 
 #define MAX_NAME_LEN 256
-#define PORT 21210
+#define PORT 2121
 #define NB_SLAVES 2
 #define PORT_SLAVE 5000
 
