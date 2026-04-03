@@ -43,12 +43,10 @@ Objectifs principaux :
 
 | Étape | Description |
 |------|-------------|
-| Étape I (Q1-7) | Structure FTP de base, terminaison propre du serveur, en-têtes requêtes/réponses, gestion des répertoires |
-| Étape II (Q8-10) | Plusieurs demandes de fichiers par connexion, transferts par blocs, sessions persistantes, reprise après crash |
-| Étape III (Q11-13) | Interconnexion Master-Slaves et redirection Round-Robin |
-| Étape IV (Q15) | Liste des répertoires à distance (`LS`) |
-
-> **Remarque :** La question 14 (redirection en cas de Slave défaillant) n’est pas incluse.  
+| Étape I | Structure FTP de base, terminaison propre du serveur, en-têtes requêtes/réponses, gestion des répertoires |
+| Étape II | Plusieurs demandes de fichiers par connexion, transferts par blocs, sessions persistantes, reprise après crash |
+| Étape III | Interconnexion Master-Slaves et redirection Round-Robin |
+| Étape IV | Liste des répertoires à distance (`LS`) |
 
 ---
 
@@ -70,6 +68,7 @@ Les serveurs Slaves commencent au port 5000 défini par `PORT_SLAVES`.
 Les serveurs Slaves créent `NB_PROC` processus pour gérer les clients.
 
 ```bash
+# Definir le nombre N d'esclaves NB_SLAVES dans masterserver.c
 # Compiler le projet
 make clean
 make
@@ -84,6 +83,8 @@ make
 
 # Lancer le client et se connecter au port 2121
 ./client <ip_serveur>
+```
+---
 
 ## Résultats des tests
 
@@ -91,7 +92,11 @@ make
 - Fichiers binaires: Intégrité vérifiée pour des images `.jpg` et des documents `.pdf`.  
 - Gros fichiers: Transfert réussi d’un fichier texte de 1 Go avec blocs de 512 octets sans problème mémoire.  
 
+---
+
 ## Bugs connus / Limitations
 
 - Les commandes `PUT` et `RM` ne sont pas implémentées et ne donnent aucun retour lorsqu’elles sont utilisées.  
-- Entrer une chaîne vide directement dans le client ne fonctionne pas et peut provoquer un comportement inattendu.  
+- Entrer une chaîne vide directement dans le client ne fonctionne pas et peut provoquer un comportement inattendu.
+
+---
